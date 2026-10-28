@@ -1,0 +1,82 @@
+name: Build single-file HTML
+
+# Manual-only artifact build. The result is one index.html, but it is NOT
+# deployable to GitHub Pages: a single file cannot register the COI service
+# worker, and Pages cannot send COOP/COEP headers. Host it on a server that
+# sends:
+#   Cross-Origin-Opener-Policy: same-origin
+#   Cross-Origin-Embedder-Policy: require-corp
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 240
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.34.9
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+
+      - name: Cache pnpm store
+        uses: actions/cache@v4
+        with:
+          path: ~/.pnpm-store
+          key: pnpm-${{ runner.os }}-${{ hashFiles('frontend/pnpm-lock.yaml') }}
+          restore-keys: pnpm-${{ runner.os }}-
+
+      - name: Install frontend dependencies
+        run: |
+          pnpm config set store-dir ~/.pnpm-store
+          cd frontend && pnpm install
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 10.0.x
+
+      - name: Cache NuGet packages
+        uses: actions/cache@v4
+        with:
+          path: ~/.nuget/packages
+          key: nuget-${{ runner.os }}-${{ hashFiles('loader/IkvmWasm.csproj', 'loader/Generated.targets', 'loader/ikvmc-manifest.g.json') }}
+          restore-keys: nuget-${{ runner.os }}-
+
+      - name: Cache downloaded statics
+        uses: actions/cache@v4
+        with:
+          path: statics
+          key: statics-${{ runner.os }}-f436b72b-adfb-4c28-9cd7-8e2493f8e815-b9449e8c-10b5-49aa-a57a-365348d837fe
+
+      - name: Cache loader build
+        uses: actions/cache@v4
+        with:
+          path: |
+            loader/bin
+            loader/obj
+            jars
+          key: loader-${{ runner.os }}-${{ hashFiles('Makefile', 'build-ikvmc.py', 'ikvmc.sh', 'loader/**', 'aotprofile/**', 'jars/**') }}
+          restore-keys: loader-${{ runner.os }}-
+
+      - name: Install mono
+        run: sudo apt-get update && sudo apt-get install -y mono-devel
+
+      - name: Build single HTML
+        run: |
+          cd loader && dotnet workload restore && cd ..
+          make -j"$(nproc)" statics
+          make single AOT=true OPT=false
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: amphibian-single-html
+          path: frontend/dist-single/index.html
+          if-no-files-found: error

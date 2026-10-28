@@ -1,0 +1,17 @@
+# Never copy these into the Docker build context
+frontend/node_modules
+frontend/dist
+frontend/dist-single
+frontend/public/_framework
+frontend/public/image
+statics
+jars/*
+!jars/.gitkeep
+loader/bin
+loader/obj
+loader/Generated.targets
+loader/ikvmc-manifest.g.json
+aotprofile/bin
+aotprofile/obj
+.git
+.DS_Store
