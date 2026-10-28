@@ -598,6 +598,15 @@ function Launcher(
                 this.sessionError = "";
                 this.view = "console";
 
+                // A file:// page cannot receive the COOP/COEP response headers needed by
+                // SharedArrayBuffer and the multithreaded WebAssembly runtime. Detect this
+                // before opening the game tab, otherwise it only displays "Waiting for the launcher".
+                if (location.protocol === "file:") {
+                        this.sessionError =
+                                "This single-file launcher was opened directly from your files. The game needs a secure, cross-origin-isolated page (HTTPS with COOP: same-origin and COEP: require-corp headers). Open the HTML through a host that provides those headers, then press PLAY again.";
+                        return;
+                }
+
                 let info: MinecraftAuthInfo;
                 try {
                         info = authInfo();
