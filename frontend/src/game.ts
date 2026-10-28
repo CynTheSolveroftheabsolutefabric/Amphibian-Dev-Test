@@ -144,6 +144,7 @@ channel.onmessage = (event: MessageEvent<ToGame>) => {
                         if (started) break;
                         started = true;
                         clearInterval(hello);
+                        clearTimeout(launcherHandshakeTimeout);
                         void boot(message);
                         break;
                 case "status":
@@ -164,3 +165,12 @@ channel.onmessage = (event: MessageEvent<ToGame>) => {
 // The launcher answers "hello" with the config once the game files are ready, so this keeps asking until it does.
 const hello = setInterval(() => send({ type: "hello" }), 500);
 send({ type: "hello" });
+
+// Keep the retry loop alive, but make a missing launcher response visible instead of an endless
+// unexplained spinner. A delayed config can still arrive and boot normally.
+const launcherHandshakeTimeout = setTimeout(() => {
+        if (!started) {
+                console.warn("[game] no launcher response after 15 seconds; check that the launcher tab is still open and preparing the game");
+                note.textContent = "Still waiting for launcher — check the launcher tab.";
+        }
+}, 15_000);
