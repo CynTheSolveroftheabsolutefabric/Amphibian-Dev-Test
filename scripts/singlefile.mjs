@@ -158,7 +158,8 @@ for (const [name, bytes] of files) {
 	let data = bytes;
 	let encoding;
 	if (bytes.length >= 512) {
-		const compressed = zlib.gzipSync(bytes, { level: 6 });
+		// This is a release artifact; favor the smallest embedded payload over build speed.
+		const compressed = zlib.gzipSync(bytes, { level: 9, strategy: zlib.constants.Z_DEFAULT_STRATEGY });
 		if (compressed.length < bytes.length) {
 			data = compressed;
 			encoding = "gzip";
